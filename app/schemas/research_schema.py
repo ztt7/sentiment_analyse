@@ -20,6 +20,16 @@ class ResearchResponse(BaseModel):
     """研究任务启动结果响应体。"""
 
     started: bool = True
+    task_id: str = ""
+    query: str = ""
+    status: str = "running"
+    role_status: dict[str, str] = Field(default_factory=dict)
+    role_progress: dict[str, int] = Field(default_factory=dict)
+    error: str = ""
+
+
+class ResearchTaskResponse(ResearchResponse):
+    """研究任务状态查询响应。"""
 
 
 class ResearchRoleResult(BaseModel):

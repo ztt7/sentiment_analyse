@@ -29,40 +29,46 @@ _RESEARCH_INVOKER: dict[str, AgentInvoker] = {
 }
 
 
-def run_research(query: str):
-    """并发启动 insight 与 media 研究 Agent"""
+def run_research(query: str, task_id: str = ""):
+    """并发启动 insight 与 media 研究 Agent。"""
     for role in _RESEARCH_INVOKER:
-        asyncio.create_task(_run_research_role_task(role, query))
+        asyncio.create_task(_run_research_role_task(role, query, task_id))
 
 
-async def _run_research_role_task(role: str, query: str):
+async def _run_research_role_task(role: str, query: str, task_id: str = ""):
     """单角色研究 Agent 后台执行任务"""
     with route_logs_by_role(role):
         _publish_role_progress(
             role=role,
+            task_id=task_id,
             update=ProgressUpdate(status="starting", message="开始执行研究", progress_pct=0),
         )
         try:
-            await _execute_research_flow(role, query)
-            pub_role_result(RoleResultEvent(role=role))
+            await _execute_research_flow(role, query, task_id)
+            pub_role_result(RoleResultEvent(task_id=task_id, role=role))
         except Exception as e:
             logger.error(f"{role} 研究智能体执行期间出现了异常: {str(e)}")
-            pub_role_error(RoleErrorEvent(role=role, error=str(e)))
+            pub_role_error(RoleErrorEvent(task_id=task_id, role=role, error=str(e)))
 
 
-async def _execute_research_flow(role: str, query: str):
+async def _execute_research_flow(role: str, query: str, task_id: str = ""):
     """装配客户端与目录并调用角色 Agent"""
     llm_client = LLMClient.from_role(role)
     output_dir = role_report_dir(role)  # type: ignore
     await _RESEARCH_INVOKER[role](
-        query, role, llm_client, output_dir, lambda update: _publish_role_progress(role, update)
+        query,
+        role,
+        llm_client,
+        output_dir,
+        lambda update: _publish_role_progress(role, task_id, update),
     )
 
 
-def _publish_role_progress(role: str, update: ProgressUpdate):
+def _publish_role_progress(role: str, task_id: str, update: ProgressUpdate):
     """将进度更新发布为角色进度事件"""
     pub_role_progress(
         RoleProgressEvent(
+            task_id=task_id,
             role=role,
             status=update.status,
             message=update.message,

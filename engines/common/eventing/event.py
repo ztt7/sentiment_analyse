@@ -17,6 +17,7 @@ class EventType(str, Enum):
 class RoleProgressEvent(BaseModel):
     """角色执行进度事件(状态/消息/百分比)"""
 
+    task_id: str = ""
     role: str
     status: str
     message: str = ""
@@ -26,12 +27,14 @@ class RoleProgressEvent(BaseModel):
 class RoleResultEvent(BaseModel):
     """角色执行完成事件"""
 
+    task_id: str = ""
     role: str
 
 
 class RoleErrorEvent(BaseModel):
     """角色执行异常事件"""
 
+    task_id: str = ""
     role: str
     error: str
 

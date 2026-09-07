@@ -10,6 +10,7 @@ from app.services.realtime.broadcaster_service import BroadcasterService
 from app.services.report.report_service import ReportService
 from app.services.report.task_store import ReportTaskStore
 from app.services.research.research_service import ResearchService
+from app.services.research.research_task_store import ResearchTaskStore
 from app.services.system.config_service import ConfigService
 
 _config_service = ConfigService()
@@ -20,7 +21,8 @@ def get_config_service() -> ConfigService:
     return _config_service
 
 
-_research_service = ResearchService()
+_research_task_store = ResearchTaskStore()
+_research_service = ResearchService(task_store=_research_task_store)
 
 
 def get_research_service() -> ResearchService:
