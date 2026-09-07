@@ -28,7 +28,7 @@ def build_graph(judge: Judge) -> Any:
     """注册节点与条件路由,编译可执行研判图。"""
     graph = StateGraph(State)  # type: ignore
     for name, node in build_nodes(judge).items():
-        graph.add_node(name, node)
+        graph.add_node(name, node)  # node是函数对象
     graph.add_edge(START, "parse_section")
     graph.add_conditional_edges(
         "parse_section",

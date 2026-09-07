@@ -1,3 +1,14 @@
+"""HostAgent 状态契约:LangGraph 运行时 State vs 跨事件 Session。
+
+边界说明:
+- State:LangGraph 单次 ainvoke 的运行时 state(TypedDict),每次 process_finding
+  由 Session.to_state 生成,ainvoke 结束后由 Session.apply_state 回收。
+- Session:跨多次 SectionReady 事件的累积会话状态(@dataclass),内部自管 pair_store
+  (default_factory 实例化)与历史 judgements;是图执行间唯一持久化的内存状态。
+  query 不在此累积——每次 invoke 由 accumulate_section 从 result.query 写入 state,save_report 同 invoke 读取。
+  图拓扑由 record_judgement 产出的 all_done 状态驱动最终报告生成，天然阻止重复生成。
+"""
+
 from dataclasses import dataclass, field
 from typing import Any, TypedDict
 
@@ -9,25 +20,25 @@ from engines.host_agent.schemas import SectionJudgement, SectionPair, SectionRes
 class HostState(TypedDict, total=False):
     """LangGraph 运行时状态契约(节点间流转)。"""
 
-    incoming: dict[str, Any]
-    section_result: SectionResult
-    valid: bool
-    query: str
-    pair_store: PairStore
-    ready_pairs: list[SectionPair]
-    current_pair: SectionPair
-    current_judgement: SectionJudgement | None
-    judgements: list[SectionJudgement]
-    all_done: bool
-    final_report: str | None
-    outbox: list[HostDiscussionMessageEvent]
+    incoming: dict[str, Any]  # 本次 section_ready 事件原始载荷
+    section_result: SectionResult  # parse_section 解析出的 SectionResult
+    valid: bool  # 入口校验结果,驱动 _route_after_parse
+    query: str  # 研究主题(accumulate_section 从 result.query 写入,save_report 读取)
+    pair_store: PairStore  # 配对存储(Session 共享引用)
+    ready_pairs: list[SectionPair]  # find_ready_pairs 计算的就绪配对
+    current_pair: SectionPair  # 正在研判的 SectionPair
+    current_judgement: SectionJudgement | None  # judge_section 产出的 SectionJudgement | None
+    judgements: list[SectionJudgement]  # 本轮图执行累积的维度研判列表 (在 invoke 结束时会覆盖回 Session)
+    all_done: bool  # record_judgement 产出的五维是否全完成
+    final_report: str | None  # generate_final_report 产出的最终报告
+    outbox: list[HostDiscussionMessageEvent]  # 本次 invoke 产出的讨论消息
 
 
 @dataclass(slots=True)
 class Session:
-    """跨事件研判会话,桥接图运行状态。"""
+    """跨SectionReady事件(10个)的研判会话状态；to/apply_state是与图运行的唯一桥梁"""
 
-    pair_store: PairStore = field(default_factory=PairStore)
+    pair_store: PairStore = field(default_factory=PairStore)  # 跨事件长存的维度配对存储
     judgements: list[SectionJudgement] = field(default_factory=list)
 
     def clear(self) -> None:
@@ -41,9 +52,9 @@ class Session:
             "incoming": incoming,
             "pair_store": self.pair_store,
             "judgements": list(self.judgements),
-            "outbox": [],
+            "outbox": [],  # 每次新来一个维度，都要清空outbox
         }
-
+    # 只有这样，下一次别的维度来的时候，才有之前的研判结果
     def apply_state(self, state: HostState) -> None:
-        """图执行后回收研判列表以维持跨事件会话。"""
+        """由 SectionReadyListener 在每次 process_finding 后调用,回收跨事件状态。"""
         self.judgements = list(state.get("judgements"))

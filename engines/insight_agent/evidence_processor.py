@@ -18,9 +18,11 @@ from engines.contracts.evidence.render import (
 @dataclass(slots=True)
 class EvidenceCluster:
     """证据聚类簇：同维度证据的语义分组与代表样本。"""
+    # 簇基础描述
     id: str
     label: str
     summary: str
+    # 簇成员
     member_record_ids: list[str] = field(default_factory=list)
     representative_ids: list[str] = field(default_factory=list)
     size: int = 0
@@ -28,8 +30,9 @@ class EvidenceCluster:
 
 @dataclass(slots=True)
 class EvidencePool:
-    """私域证据池：承载全部召回记录与聚类结果。"""
+    """全局证据池：承载全部召回记录与聚类结果。它会在graph模式下在各个节点之间流转。"""
     query: str
+    # 资产清单
     records: list[EvidenceRecord] = field(default_factory=list)
     clusters: list[EvidenceCluster] = field(default_factory=list)
 
@@ -84,6 +87,7 @@ def generate_section_records(
     section_key: str, records: list[EvidenceRecord]
 ) -> list[EvidenceRecord]:
     """按章节键筛选证据并按评论分或热度分降序排列。"""
+    # 如果某条记录的cluster_id与章节键匹配，则将其加入结果列表
     matched_records = [r for r in records if r.cluster_id == f"cluster_{section_key}"]
     if not matched_records:
         return []
@@ -112,7 +116,7 @@ def _calculate_heat_score(record: EvidenceRecord) -> float:
     score = float(record.hotness_score) + float(record.final_score) * 0.1
     return round(score, 3)
 
-
+# 生成章节证据包
 def generate_section_evidence_pack(
     used_query: str,
     selected: list[EvidenceRecord],
@@ -135,10 +139,12 @@ def dispatch_section_ready_event(
     role_info = ROLE_INFOS.get(role_key)
     agent_name = role_info.display_name
     try:
+        # 1.提取元数据
         section_metadata = {
             "hit_count": section.get("hit_count", 0),
             "evidence_strength": section.get("evidence_strength", "missing"),
         }
+        # 2.构建章节，准备发布事件数据包
         event = SectionReadyEvent(
             source=role_key,
             agent_name=agent_name,
@@ -149,6 +155,7 @@ def dispatch_section_ready_event(
             body=section.get("body"),
             section_metadata=section_metadata,
         )
+        # 3.发布章节就绪事件
         publish_section_read_ready(event)
         logger.info(f"【{agent_name}】 [section_ready] 事件已发布 章节={event.section_key} 证据包数={event.section_metadata['hit_count']}")
     except Exception as exc:

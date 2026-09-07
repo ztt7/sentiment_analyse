@@ -28,7 +28,7 @@ class AnspireSearchClient(BaseSearchClient):
 
     async def source_search(self, query: str) -> SearchProviderResponse:
         """强化官方词并在央视站点溯源检索。"""
-        enhanced_query = f"{query} 通报 OR 回应 OR 官方"
+        enhanced_query = f"{query} 通报 OR 回应 OR 官方"  # 增强
         return await self._execute_search(
             query=enhanced_query, top_k=10, insite=AUTHORITATIVE_SOURCES
         )

@@ -11,7 +11,7 @@ class ResearchDimension:
     media_goal: str
     insight_cluster_rule: tuple[str, ...] | None = None
 
-
+#直接定义为字典，Key就是section_key,Value是ResearchDimension对象
 DIMENSIONS: dict[str, ResearchDimension] = {
     "background_overview": ResearchDimension(
         key="background_overview",

@@ -8,7 +8,7 @@ _REQUIRED_AGENT_SOURCES = ("insight", "media")
 
 
 class PairStore:
-    """按维度累积章节结果,齐备即就绪配对。"""
+    """按section_key维度累积 insight/media章节结果；同维度齐备即就绪配对。"""
 
     def __init__(self) -> None:
         """初始化按维度累积结果字典与已研判集合。"""
@@ -34,7 +34,7 @@ class PairStore:
         return True
 
     def ready_pairs(self) -> list[SectionPair]:
-        """返回齐备未研判的维度配对(按固定序)。"""
+        """返回所有insight+media齐备且未研判的维度配对，按DIMENSION_KEYS固定顺序。"""
         return [self._build_pair(key) for key in DIMENSIONS.keys() if self._is_ready(key)]
 
     def mark_done(self, section_key: str) -> None:

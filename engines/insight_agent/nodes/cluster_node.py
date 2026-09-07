@@ -61,7 +61,7 @@ class ClusterNode(BaseNode):
                 and bool(settings.INSIGHT_CLUSTER_MODEL)
                 and len(records) >= settings.INSIGHT_CLUSTER_MIN_CLUSTER_SIZE
         )
-
+    # 策略1：基于关键词匹配的规则聚类
     def _cluster_by_rules(self, records: list[EvidenceRecord]) -> list[EvidenceCluster]:
         """按五维关键词规则将证据归入维度簇。"""
         cluster_data: dict[str, list[EvidenceRecord]] = defaultdict(list)
@@ -79,18 +79,22 @@ class ClusterNode(BaseNode):
                 return f"cluster_{dim_key}"
         return "cluster_other"
 
+    # 策略2:基于K-means的语义聚类
     def _cluster_by_semantics(self, records: list[EvidenceRecord]) -> list[EvidenceCluster]:
         """BGE-M3 编码后 KMeans 聚类再路由到维度。"""
         settings = get_settings()
         sampled = records[: settings.INSIGHT_CLUSTER_MAX_RECORDS]
         contents = [f"{r.source_keyword} {r.content}".strip() for r in sampled]
+        # 向量化与KMeans计算簇标签
         embeddings = _get_embedding_model().encode(
             contents, normalize_embeddings=True, show_progress_bar=False
         )
         assignments = self._calculate_kmeans_labels(embeddings, len(sampled))
+        # 临时分组
         temp_groups: dict[int, list[EvidenceRecord]] = defaultdict(list)
         for record, label in zip(sampled, assignments):
             temp_groups[label].append(record)
+        # 语义路由，将自由簇对齐到标准维度
         cluster_data: dict[str, list[EvidenceRecord]] = defaultdict(list)
         for cluster_records in temp_groups.values():
             dim_key = self._route_to_dimension(cluster_records)
@@ -103,7 +107,7 @@ class ClusterNode(BaseNode):
     def _calculate_kmeans_labels(self, embeddings: Any, count: int) -> list[int]:
         """对嵌入执行 KMeans 并返回簇标签。"""
         from sklearn.cluster import KMeans
-
+        # k>=5(k固定是5或者count//桶的最小数：INSIGHT_CLUSTER_MIN_CLUSTER_SIZE>5)
         k = self._determine_optimal_k(count)
         return [
             int(l)
@@ -117,13 +121,15 @@ class ClusterNode(BaseNode):
         return max(2, min(settings.INSIGHT_CLUSTER_MAX_CLUSTERS, k, count))
 
     def _route_to_dimension(self, records: list[EvidenceRecord]) -> str:
-        """用 BGE-M3 向量相似度将簇匹配到私域维度。"""
+        """计算簇中心与预置维度向量的余弦相似度，执行语义投递"""
         sample = " ".join(r.content[:30] for r in records[:10])
         emb = _get_embedding_model().encode(
             [sample], normalize_embeddings=True, show_progress_bar=False
         )
         keys, dimension_embs = _get_dimension_vector()
+        # 1. 计算当前文本向量与五大维度向量的相似度
         similarities = np.dot(emb, dimension_embs.T)[0]
+        # 2. 选择相似度最高的维度 key
         return keys[int(np.argmax(similarities))]
 
     def _assemble_clusters(self, data: dict[str, list[EvidenceRecord]]) -> list[EvidenceCluster]:

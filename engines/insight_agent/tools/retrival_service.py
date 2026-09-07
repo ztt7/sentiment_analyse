@@ -30,7 +30,13 @@ class RetrievalQueryTask:
 
 
 def build_retrieval_tasks(query: str) -> list[RetrievalQueryTask]:
-    """按原句与分词构建三通道召回任务列表。"""
+    """按原句与分词构建三通道召回任务列表。
+    本质：query: 去三通道检索 分词：两个通道检索
+
+    原始查询：query: hot_recall通道检索
+
+    分后词+原始的query：kw1:二通道检索 kw2:二通道检索 query:二通道检索
+    """
     final_query = []
     final_query.append(query)
     for extract_kw in _extract_keywords(query):
@@ -64,7 +70,9 @@ class InsightRetrivalService:
 
     async def retrival_evidence(self, query: str) -> list[EvidenceRecord]:
         """并发执行三通道召回与向量检索并合并证据。"""
+        # 1. 查询(调用MySQL[keyword_recall/comment_recall/hot_recall]/Vector)
         retrival_db_tasks = build_retrieval_tasks(query)
+        # 2. '并发'查询MySQL以及Vector 且‘等’二路查询都返回最后的结果EvidenceRecord
         db_evidences, vec_evidences = await asyncio.gather(
             self._retrival_db_evidence(retrival_db_tasks), self._retrival_vec_evidence(query)
         )
@@ -80,7 +88,7 @@ class InsightRetrivalService:
             )
         except Exception as e:
             logger.error(f"Vector检索失败,查询={query} 原因={str(e)}")
-            return []
+            return []  # 保证DB路检索正常
         return map_vector_record(query, search_results)
 
     def filter_expr(self) -> str:
@@ -126,12 +134,12 @@ def map_db_record(
 def _map_to_db_record(retrival_task: RetrievalQueryTask, record: SearchRecord) -> EvidenceRecord:
     """将 MySQL 记录转为 EvidenceRecord。"""
     return EvidenceRecord(
-        id=record.mysql_pk,
+        id=record.mysql_pk, # 唯一，平台名+表名+主键
         platform=record.platform,
         source_table=record.source_table,
         source_keyword=record.source_keyword,
         content=record.title_or_content,
-        published_at=record.published_at.strftime("%Y-%m-%d %H:%M:%S"),
+        published_at=record.published_at.strftime("%Y-%m-%d %H:%M:%S"), # 因为接下来要交给大语言模型，所以这里要转为字符串格式
         hotness_score=record.hotness_score,
         engagement=Engagement(
             likes=record.engagement.get("likes", 0),

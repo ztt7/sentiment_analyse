@@ -34,8 +34,8 @@ class DatabaseSearchRepository:
         statement = union_all(*select_queries).order_by(desc(column("hotness_score"))).limit(limit)
         return await self._execute_search(
             channel="hot_recall",
-            statement=statement,
-            record_mapper=db_row_to_search_record,
+            statement=statement,  # sql 语句
+            record_mapper=db_row_to_search_record, # 返回的结果
         )
 
     async def keyword_recall(self, topic_keyword: str, limit: int = 20) -> SearchResponse:
@@ -54,16 +54,20 @@ class DatabaseSearchRepository:
 
     async def comment_recall(self, comment_keyword: str, limit: int = 60) -> SearchResponse:
         """根据关键词进行跨平台的评论与舆情观点数据召回。"""
+        # 1.构造SQL模糊查询所需的关键词格式（例如："%高考%"）
         search_term = f"%{comment_keyword}%"
+        # 2.构建跨平台搜索语句
         select_queries = [
             build_comment_search_query(adapter, search_term, limit)
             for adapter in PLATFORM_MAPPING.values()
         ]
+        # 3.构建两张表关联查询语句
         statement = union_all(*select_queries).order_by(desc(column("published_at"))).limit(limit)
+        # 4.数据库执行联合 SQL, 并将每行数据映射为标准对象，返回搜索结果对象
         return await self._execute_search(
             channel="comment_recall",
             statement=statement,
-            record_mapper=db_row_to_search_record,
+            record_mapper=db_row_to_search_record,   # 转换函数
         )
 
     async def _execute_search(
@@ -74,6 +78,7 @@ class DatabaseSearchRepository:
             record_mapper: RecordMapper,
     ) -> SearchResponse:
         """执行 SQL 并封装为带通道与错误信息的响应。"""
+        # 1.获取查询记录
         rows = []
         error_message = None
         try:
@@ -81,7 +86,9 @@ class DatabaseSearchRepository:
         except Exception as e:
             error_message = str(e)
             logger.exception(f"数据库查询时发生错误: {error_message}")
+        # 2.结果映射InsightSearchRecord
         records = self._map_rows(rows, record_mapper)
+        # 3.封装查询响应
         return SearchResponse(
             retrieval_channel=channel,
             search_results=records,

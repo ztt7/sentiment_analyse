@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Literal
-
+"""接网络搜索结果的schemas"""
 SearchTool = Literal["comprehensive_search", "source_search", "realtime_search"]
 SearchProvider = Literal["anspire", "bocha", "tavily"]
 

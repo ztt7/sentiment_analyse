@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 from engines.media_agent.web_search.schemas import SearchTool
 
-
+"""接大语言模型的schemas"""
 class MediaSectionPlan(BaseModel):
     """单个章节的检索计划结构化输出模型。"""
 

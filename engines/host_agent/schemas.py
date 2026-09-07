@@ -4,7 +4,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class SectionResult:
-    """单 Agent 维度章节结果(事件载荷投影)。"""
+    """单 Agent 对某维度的章节研究结果(事件载荷投影)。"""
     source: str
     section_key: str
     title: str

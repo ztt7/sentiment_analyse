@@ -11,15 +11,15 @@ class WebSearchClient:
     """按开关选择 Provider 的 Web 检索统一入口。"""
 
     CLIENT_MAPPING: dict[str, type[BaseSearchClient]] = {
-        "AnspireAPI": AnspireSearchClient,
+        "AnspireAPI": AnspireSearchClient,# 不带括号的是类，带括号的是实例对象
         "BochaAPI": BochaSearchClient,
         "TavilyAPI": TavilySearchClient,
     }
 
     def __init__(self, search_switch: Optional[str] | None = None) -> None:
         """按开关实例化具体 Provider 客户端。"""
-        client_class = self.CLIENT_MAPPING.get(search_switch, TavilySearchClient)
-        self._client: BaseSearchClient = client_class()
+        client_class = self.CLIENT_MAPPING.get(search_switch, TavilySearchClient) # 这个是拿到了类对象
+        self._client: BaseSearchClient = client_class() # 这个是将类对象实例化，得到了实例对象，赋值给self._client
 
     async def comprehensive_search(self, query: str) -> SearchProviderResponse:
         """委托具体 Provider 执行综合检索。"""

@@ -19,6 +19,7 @@ async def invoke_media_agent(
     """构建媒体研究上下文并执行 LangGraph 研究图。"""
     agent_name = role_display_name(role)  # type: ignore
     logger.info(f"【{agent_name}】开始研究: {query}")
+    # 构建上下文
     context = MediaContext(
         role=role, llm_client=llm_client, output_dir=output_dir, progress_callback=progress_callback
     )

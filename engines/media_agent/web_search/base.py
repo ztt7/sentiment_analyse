@@ -48,6 +48,7 @@ class BaseSearchClient(ABC):
             data = response.json()
         return data
 
+    # 下面的三个都是抽象方法，子类必须实现它们，如何找他们的子类实现，左边有一个蓝色的圈，点击可以跳转到实现它的全部子类
     @abstractmethod
     async def comprehensive_search(self, query: str) -> SearchProviderResponse:
         """综合检索某主题的全面公开媒体信息。"""

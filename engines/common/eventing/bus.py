@@ -6,7 +6,7 @@ from engines.common.eventing.event import EventType
 
 EventCallback = Callable[[EventType, dict[str, Any]], None]
 _subscribers: dict[EventType, set[EventCallback]] = {}
-
+"""订阅的本质是:将事件与回调函数关联起来(事件触发时,会调用对应的回调函数)"""
 
 def subscribe(event_type: EventType, callback: EventCallback):
     """订阅指定事件类型的回调"""

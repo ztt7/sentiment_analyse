@@ -25,7 +25,7 @@ class MediaContext:
         self.llm_client = llm_client
         self.output_dir = output_dir
         self.progress_callback = progress_callback
-        self._web_search_client = WebSearchClient()
+        self._web_search_client = WebSearchClient() # 工厂对象
 
     def report_progress(self, status: str, message: str, pct: int) -> None:
         """向外推送研究进度状态、消息与百分比。"""
@@ -33,11 +33,14 @@ class MediaContext:
 
     async def execute_search(self, tool_name: SearchTool, query: str) -> list[EvidenceRecord]:
         """执行 Web 检索并将结果映射为证据记录列表。"""
+        # 获取校验后的工具
         validated_tool: SearchTool = (
             tool_name if tool_name in get_args(SearchTool) else "comprehensive_search"
         )
         try:
+            # 获取搜索结果
             web_response = await self._search_webpage(validated_tool, query)
+            # 转换结果并返回
             return self._map_to_evidence_records(web_response, query)
         except Exception as exc:
             logger.error(f"{self.role} 搜索失败 tool={validated_tool} query={query} 异常={exc}")
@@ -50,10 +53,13 @@ class MediaContext:
     ) -> SearchProviderResponse:
         """按工具类型分派综合、溯源或实时检索。"""
         match tool_name:
+            # 溯源检索
             case "source_search":
                 response = await self._web_search_client.source_search(query)
+            # 实时检索
             case "realtime_search":
                 response = await self._web_search_client.realtime_search(query)
+            # 综合检索
             case _:
                 response = await self._web_search_client.comprehensive_search(query)
         return response

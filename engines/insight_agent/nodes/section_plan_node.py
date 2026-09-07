@@ -17,7 +17,7 @@ from engines.insight_agent.state import InsightSection, InsightState
 
 
 class SectionPlanNode(BaseNode):
-    """章节规划节点：LLM 生成五维章节计划。"""
+    """负责将舆论主题转换为标准化的报告章节大纲，确保所有维度分析点对齐"""
 
     def __init__(self, context: ResearchNodeContext) -> None:
         """初始化章节规划节点上下文。"""
@@ -28,11 +28,15 @@ class SectionPlanNode(BaseNode):
         agent_name = role_display_name(state["role"])  # type: ignore
         logger.info(f"【{agent_name}】 开始进行章节规划，当前研究主题: '{state.get('query')}'")
         self.context.report_progress("planning", f"{agent_name} 开始执行私域五维搜索信息规划", 10)
+        # 构建LLM所需的用户提示词
         plan_user_prompt = self._build_plan_prompt(state)
+        # 调用LLM生成报告章节结构化大纲
         plan: InsightResearchPlan = await self.context.llm_client.generate_object(
             PLAN_SYSTEM_PROMPT, plan_user_prompt, InsightResearchPlan
         )
+        # 将LLM生成的报告章节大纲映射为五章节对象列表
         sections = self.generate_insight_section(plan)
+        # 返回五章节对应列表
         section_keys = ", ".join(s.get("section_key", "") for s in sections)
         logger.info(f"【{agent_name}】章节规划完成，共规划 {len(sections)} 个章节信息，包含: {section_keys}")
         self.context.report_progress("planning", f"{agent_name} 规划私域五维搜索信息完成", 20)

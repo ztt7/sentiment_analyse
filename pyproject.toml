@@ -32,6 +32,7 @@ dependencies = [
     "sse-starlette>=3.4.4",
     "jieba>=0.42.1",
     "pymilvus[model]>=2.6.0",
+    "modelscope>=1.39.1",
 ]
 
 [project.optional-dependencies]
@@ -55,13 +56,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [[tool.uv.index]]
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+url = "https://mirrors.aliyun.com/pypi/simple"
 default = true
 
 
 [[tool.uv.index]]
 name = "pytorch"
-url = "https://download.pytorch.org/whl/cu128"
+url = "https://download.pytorch.org/whl/cpu"
 explicit = true  # 明确指定，否则普通包不要来这里找
 
 [tool.uv.sources]

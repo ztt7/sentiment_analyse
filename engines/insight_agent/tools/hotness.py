@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 HotRecallPeriod = Literal["24h", "week", "year"]
-
+# 互动指标，2个平台4张表的所有互动指标
 ENGAGEMENT_METRICS = {
     "likes": "like",
     "comments": "comment",

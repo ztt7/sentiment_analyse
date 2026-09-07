@@ -50,7 +50,7 @@ def find_ready_pairs(state: HostState) -> HostState:
 
 
 def record_judgement(state: HostState) -> HostState:
-    """记录研判结果并发主持人章节消息。"""
+    """标记已研判；追加judgement;发host章节消息。计算all_done供路由读取。"""
     pair = state["current_pair"]
     judgement = state.get("current_judgement")
     pair_store = state["pair_store"]
@@ -60,7 +60,7 @@ def record_judgement(state: HostState) -> HostState:
     }
     if judgement:
         updates["judgements"] = [*state.get("judgements"), judgement]
-        updates["outbox"] = append_event(state.get("outbox"), build_judgement_event(judgement))
+        updates["outbox"] = append_event(state.get("outbox"), build_judgement_event(judgement))  # 研判者说的研判结果
     return updates
 
 
@@ -107,13 +107,13 @@ def save_host_report(state: HostState) -> HostState:
 
 
 def build_nodes(judge: Judge) -> dict[str, Callable[..., Any]]:
-    """返回图节点注册表,直接注入 Judge。"""
-    return {
+    """返回LangGraph add_node用的{node_name:callable}注册表；Judge直接注入。"""
+    return { # value都是函数对象，现在不是类对象了
         "parse_section": parse_section,
         "accumulate_section": accumulate_section,
         "find_ready_pairs": find_ready_pairs,
-        "judge_section": build_judge_section(judge),
+        "judge_section": build_judge_section(judge), # 闭包函数   其中judge就是能够调用大语言模型的对象，是一个裁判对象
         "record_judgement": record_judgement,
-        "generate_final_report": build_generate_final_report(judge),
+        "generate_final_report": build_generate_final_report(judge), # 闭包函数
         "save_report": save_host_report,
     }

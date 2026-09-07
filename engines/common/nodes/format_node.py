@@ -11,24 +11,28 @@ from engines.insight_agent.state import InsightState
 
 
 class FormatReportNode(BaseNode):
-    """整合章节列表为最终研究报告"""
+    """负责将已总结的章节列表整合为一份完整的、格式优美的研究报告。"""
 
     async def __call__(self, state: InsightState) -> dict[str, Any]:
-        """触发最终报告排版与进度上报"""
+        # 1.提取基础信息以及构建日志
         agent_name = role_display_name(state["role"]) # type: ignore
         self.context.report_progress("formatting", f"{agent_name} 开始格式化最终报告", 70)
         role = state.get("role")
         agent_info = ROLE_INFOS.get(role)  # type: ignore
         query = state.get("query", "未知主题")
         sections = state.get("sections", [])
+        # 首行日志：明确执行人、主题与任务量
         logger.info(
             f"【 {agent_name}】开始执行最终报告排版，关于舆论话题: '{query}'，共 {len(sections)} 个章节等待整合..."
         )
+        # 2.准备报告内容
         report_context = json.dumps(
             [{"title": section.get("title"), "body": section.get("body")} for section in sections],
             ensure_ascii=False,
         )
+        # 3.尝试执行LLM排版（将query和context透传进去用于渲染prompt)
         md_report = await self._generate_final_report(agent_info, report_context, query)
+        # 4. 如果LLM返回空或失败，执行兜底拼接
         if not md_report:
             logger.warning(f"[{role}] LLM 排版失败或返回为空，执行程序化兜底拼接。")
             md_report = _fallback_report(agent_name, query, sections)
